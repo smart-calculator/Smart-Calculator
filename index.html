@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>Smart Calculator</title>
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --sub-text: #666666;
+      --num-bg: #f4f4f6;
+      --num-text: #000000;
+      --op-bg: #ffe5e5;
+      --op-text: #d90429;
+      --eq-bg: #16a34a;
+      --eq-text: #ffffff;
+      --card-bg: #f8f9fa;
+      --border-color: #e0e0e0;
+    }
+
+    body.dark-mode {
+      --bg-color: #121212;
+      --text-color: #ffffff;
+      --sub-text: #aaaaaa;
+      --num-bg: #1e1e1e;
+      --num-text: #ffffff;
+      --op-bg: #3b181c;
+      --op-text: #ff4d6d;
+      --eq-bg: #16a34a;
+      --eq-text: #ffffff;
+      --card-bg: #1e1e1e;
+      --border-color: #333333;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    #pin-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+      opacity: 1;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    #pin-modal.hide-anim {
+      opacity: 0;
+      transform: scale(0.85);
+      pointer-events: none;
+    }
+
+    .modal-box {
+      background: #ffffff;
+      color: #000000;
+      width: 100%;
+      max-width: 340px;
+      padding: 24px;
+      border-radius: 18px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .modal-box h3 { font-size: 20px; margin-bottom: 8px; }
+    .modal-box p { font-size: 14px; color: #555; margin-bottom: 16px; }
+    .modal-box input {
+      width: 100%; padding: 12px; font-size: 18px; text-align: center;
+      border: 2px solid #ddd; border-radius: 10px; margin-bottom: 16px; outline: none;
+    }
+    .modal-box input:focus { border-color: #16a34a; }
+    .modal-btns { display: flex; gap: 10px; }
+    .modal-btns button {
+      flex: 1; padding: 12px; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .btn-skip { background: #e5e7eb; color: #374151; }
+    .btn-save-pin { background: #16a34a; color: #ffffff; }
+
+    #calc-view {
+      display: flex; flex-direction: column; height: 100%;
+      justify-content: flex-end; padding: 20px; max-width: 500px; width: 100%; margin: 0 auto;
+    }
+    .display-area { text-align: right; padding: 10px 8px 24px 8px; word-wrap: break-word; }
+    #history { font-size: 20px; color: var(--sub-text); min-height: 28px; margin-bottom: 6px; }
+    #display { font-size: 52px; font-weight: 500; color: var(--text-color); overflow-x: auto; white-space: nowrap; }
+    .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .calc-btn {
+      height: 70px; border-radius: 18px; border: none; font-size: 26px;
+      font-weight: 600; cursor: pointer; transition: transform 0.1s;
+    }
+    .calc-btn:active { transform: scale(0.93); }
+    .btn-num { background-color: var(--num-bg); color: var(--num-text); }
+    .btn-op { background-color: var(--op-bg); color: var(--op-text); }
+    .btn-eq { background-color: var(--eq-bg); color: var(--eq-text); font-size: 32px; }
+
+    #vault-view, #settings-view {
+      display: none; flex-direction: column; height: 100%; padding: 18px;
+      overflow-y: auto; max-width: 600px; width: 100%; margin: 0 auto;
+    }
+    .vault-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 14px; border-bottom: 1px solid var(--border-color); margin-bottom: 18px;
+    }
+    .vault-header h2 { font-size: 22px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .icon-btn {
+      background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color);
+      padding: 8px 12px; border-radius: 10px; font-size: 18px; cursor: pointer;
+    }
+    .exit-btn {
+      background: #d90429; color: #ffffff; border: none; padding: 8px 14px;
+      border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+
+    .yellow-box {
+      background-color: #fef08a; color: #1f2937; border: 2px solid #eab308;
+      border-radius: 16px; padding: 16px; margin-bottom: 18px;
+      box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15);
+    }
+    .yellow-box h3 { font-size: 17px; margin-bottom: 4px; color: #854d0e; }
+    .yellow-box .box-subtitle { font-size: 13px; color: #713f12; margin-bottom: 12px; font-weight: 500; }
+    .yellow-box textarea, .yellow-box input {
+      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ca8a04;
+      background: #fefce8; color: #000000; font-size: 15px; margin-bottom: 10px; outline: none;
+    }
+    .yellow-action-btn {
+      width: 100%; padding: 11px; border: none; border-radius: 10px;
+      background: #ca8a04; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .site-list { list-style: none; margin-top: 12px; }
+    .site-list li {
+      background: #fefce8; border: 1px solid #eab308; padding: 10px 12px;
+      border-radius: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .site-list a { color: #1d4ed8; text-decoration: none; font-weight: 600; font-size: 15px; word-break: break-all; }
+    .del-site {
+      background: #ef4444; color: #ffffff; border: none; border-radius: 6px;
+      padding: 4px 9px; font-size: 13px; cursor: pointer; margin-left: 8px;
+    }
+
+    .setting-card {
+      background: var(--card-bg); border: 1px solid var(--border-color);
+      padding: 16px; border-radius: 14px; margin-bottom: 16px;
+    }
+    .setting-card h4 { margin-bottom: 10px; font-size: 16px; }
+    .setting-card input {
+      width: 100%; padding: 11px; border-radius: 8px; border: 1px solid var(--border-color);
+      background: var(--bg-color); color: var(--text-color); margin-bottom: 10px; font-size: 15px;
+    }
+    .setting-btn {
+      width: 100%; padding: 11px; border: none; border-radius: 8px;
+      background: #16a34a; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .row-between { display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+
+  <div id="pin-modal" style="display: none;">
+    <div class="modal-box">
+      <h3>Set Secret PIN</h3>
+      <p>Create a numeric PIN to lock your hidden notes & websites, or skip for now.</p>
+      <input type="number" id="initial-pin-input" placeholder="Enter PIN (e.g. 1234)">
+      <div class="modal-btns">
+        <button class="btn-skip" onclick="skipPinSetup()">Skip</button>
+        <button class="btn-save-pin" onclick="saveInitialPin()">Set PIN</button>
+      </div>
+    </div>
+  </div>
+  <div id="calc-view">
+    <div class="display-area">
+      <div id="history"></div>
+      <div id="display">0</div>
+    </div>
+    <div class="keypad">
+      <button class="calc-btn btn-op" onclick="clearAll()">AC</button>
+      <button class="calc-btn btn-op" onclick="backspace()">⌫</button>
+      <button class="calc-btn btn-op" onclick="appendVal('%')">%</button>
+      <button class="calc-btn btn-op" onclick="appendVal('/')">÷</button>
+
+      <button class="calc-btn btn-num" onclick="appendVal('7')">7</button>
+      <button class="calc-btn btn-num" onclick="appendVal('8')">8</button>
+      <button class="calc-btn btn-num" onclick="appendVal('9')">9</button>
+      <button class="calc-btn btn-op" onclick="appendVal('*')">×</button>
+
+      <button class="calc-btn btn-num" onclick="appendVal('4')">4</button>
+      <button class="calc-btn btn-num" onclick="appendVal('5')">5</button>
+      <button class="calc-btn btn-num" onclick="appendVal('6')">6</button>
+      <button class="calc-btn btn-op" onclick="appendVal('-')">−</button>
+
+      <button class="calc-btn btn-num" onclick="appendVal('1')">1</button>
+      <button class="calc-btn btn-num" onclick="appendVal('2')">2</button>
+      <button class="calc-btn btn-num" onclick="appendVal('3')">3</button>
+      <button class="calc-btn btn-op" onclick="appendVal('+')">+</button>
+
+      <button class="calc-btn btn-num" onclick="appendVal('00')">00</button>
+      <button class="calc-btn btn-num" onclick="appendVal('0')">0</button>
+      <button class="calc-btn btn-num" onclick="appendVal('.')">.</button>
+      <button class="calc-btn btn-eq" onclick="handleEqual()">=</button>
+    </div>
+  </div>
+
+  <div id="vault-view">
+    <div class="vault-header">
+      <h2>🔒 Private Vault</h2>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="openSettings()" title="Settings">⚙️</button>
+        <button class="exit-btn" onclick="lockVault()">Lock</button>
+      </div>
+    </div>
+
+    <div class="yellow-box">
+      <h3>📝 Secret Notes</h3>
+      <div class="box-subtitle">Hide your secret notes here (Auto-saved offline)</div>
+      <textarea id="secret-notes" rows="5" placeholder="Write your private notes here to hide them..." oninput="autoSaveNotes()"></textarea>
+    </div>
+
+    <div class="yellow-box">
+      <h3>🌐 Hidden Websites</h3>
+      <div class="box-subtitle">Hide your private websites here</div>
+      <input type="text" id="web-name" placeholder="Website Name (e.g. Private Site)">
+      <input type="url" id="web-url" placeholder="Website Link (e.g. https://example.com)">
+      <button class="yellow-action-btn" onclick="addWebsite()">+ Hide Website</button>
+      <ul class="site-list" id="website-list"></ul>
+    </div>
+  </div>
+
+  <div id="settings-view">
+    <div class="vault-header">
+      <h2>⚙️ Settings</h2>
+      <button class="icon-btn" onclick="closeSettings()">← Back</button>
+    </div>
+
+    <div class="setting-card">
+      <h4>🔑 Change Secret PIN</h4>
+      <input type="number" id="new-pin-input" placeholder="Enter new numeric PIN">
+      <button class="setting-btn" onclick="updatePin()">Save New PIN</button>
+    </div>
+
+    <div class="setting-card row-between">
+      <div>
+        <h4>🌓 Theme Mode</h4>
+        <p style="font-size: 13px; color: var(--sub-text);">Switch between Light & Dark mode</p>
+      </div>
+      <button class="icon-btn" id="theme-toggle-btn" onclick="toggleTheme()">🌙 Dark</button>
+    </div>
+
+    <div class="setting-card row-between">
+      <h4>📱 App Version</h4>
+      <span style="font-weight: 600; color: #16a34a;">Version 1.0.0 (Offline Ready)</span>
+    </div>
+  </div>
+
+  <script>
+    var expr = "";
+    var PIN_KEY = "calc_vault_secret_pin";
+    var NOTES_KEY = "calc_vault_secret_notes";
+    var SITES_KEY = "calc_vault_secret_sites";
+    var THEME_KEY = "calc_vault_theme";
+
+    window.addEventListener("DOMContentLoaded", function() {
+      if (localStorage.getItem(THEME_KEY) === "dark") {
+        document.body.classList.add("dark-mode");
+        document.getElementById("theme-toggle-btn").innerText = "☀️ Light";
+      }
+      var savedPin = localStorage.getItem(PIN_KEY);
+      if (!savedPin) {
+        document.getElementById("pin-modal").style.display = "flex";
+      }
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js").catch(function() {});
+      }
+    });
+
+    function saveInitialPin() {
+      var val = document.getElementById("initial-pin-input").value.trim();
+      if (!val || val.length < 3) {
+        alert("Please enter at least a 3 or 4 digit numeric PIN.");
+        return;
+      }
+      localStorage.setItem(PIN_KEY, val);
+      closeModalWithAnim();
+    }
+
+    function skipPinSetup() {
+      closeModalWithAnim();
+    }
+
+    function closeModalWithAnim() {
+      var modal = document.getElementById("pin-modal");
+      modal.classList.add("hide-anim");
+      setTimeout(function() { modal.style.display = "none"; }, 400);
+    }
+
+    function updateScreen() {
+      document.getElementById("display").innerText = expr || "0";
+    }
+
+    function appendVal(v) {
+      if (expr === "Error") expr = "";
+      expr += v;
+      updateScreen();
+    }
+
+    function clearAll() {
+      expr = "";
+      document.getElementById("history").innerText = "";
+      updateScreen();
+    }
+
+    function backspace() {
+      expr = expr.slice(0, -1);
+      updateScreen();
+    }
+
+    function handleEqual() {
+      var savedPin = localStorage.getItem(PIN_KEY);
+      if (savedPin && expr === savedPin) {
+        expr = "";
+        updateScreen();
+        openVault();
+        return;
+      }
+      if (!expr) return;
+      try {
+        document.getElementById("history").innerText = expr;
+        var sanitized = expr.replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-");
+        var result = Function('"use strict";return (' + sanitized + ')')();
+        if (result === undefined || isNaN(result)) {
+          expr = "Error";
+        } else {
+          expr = String(Number(result.toFixed(8)));
+        }
+        updateScreen();
+      } catch (err) {
+        expr = "Error";
+        updateScreen();
+      }
+    }
+
+    function openVault() {
+      document.getElementById("calc-view").style.display = "none";
+      document.getElementById("settings-view").style.display = "none";
+      document.getElementById("vault-view").style.display = "flex";
+      document.getElementById("secret-notes").value = localStorage.getItem(NOTES_KEY) || "";
+      renderWebsites();
+    }
+
+    function lockVault() {
+      document.getElementById("vault-view").style.display = "none";
+      document.getElementById("settings-view").style.display = "none";
+      document.getElementById("calc-view").style.display = "flex";
+      clearAll();
+    }
+
+    function autoSaveNotes() {
+      localStorage.setItem(NOTES_KEY, document.getElementById("secret-notes").value);
+    }
+
+    function addWebsite() {
+      var name = document.getElementById("web-name").value.trim();
+      var url = document.getElementById("web-url").value.trim();
+      if (!name || !url) {
+        alert("Please enter both website name and URL.");
+        return;
+      }
+      if (url.indexOf("http://") !== 0 && url.indexOf("https://") !== 0) {
+        url = "https://" + url;
+      }
+      var sites = JSON.parse(localStorage.getItem(SITES_KEY) || "[]");
+      sites.push({ name: name, url: url });
+      localStorage.setItem(SITES_KEY, JSON.stringify(sites));
+      document.getElementById("web-name").value = "";
+      document.getElementById("web-url").value = "";
+      renderWebsites();
+    }
+
+    function renderWebsites() {
+      var sites = JSON.parse(localStorage.getItem(SITES_KEY) || "[]");
+      var list = document.getElementById("website-list");
+      list.innerHTML = "";
+      for (var i = 0; i < sites.length; i++) {
+        var li = document.createElement("li");
+        li.innerHTML = '<a href="' + sites[i].url + '" target="_blank" rel="noopener noreferrer">🔗 ' + sites[i].name + '</a><button class="del-site" onclick="removeWebsite(' + i + ')">Delete</button>';
+        list.appendChild(li);
+      }
+    }
+
+    function removeWebsite(idx) {
+      var sites = JSON.parse(localStorage.getItem(SITES_KEY) || "[]");
+      sites.splice(idx, 1);
+      localStorage.setItem(SITES_KEY, JSON.stringify(sites));
+      renderWebsites();
+    }
+
+    function openSettings() {
+      document.getElementById("vault-view").style.display = "none";
+      document.getElementById("settings-view").style.display = "flex";
+    }
+
+    function closeSettings() {
+      document.getElementById("settings-view").style.display = "none";
+      document.getElementById("vault-view").style.display = "flex";
+    }
+
+    function updatePin() {
+      var newPin = document.getElementById("new-pin-input").value.trim();
+      if (!newPin || newPin.length < 3) {
+        alert("Please enter at least a 3-digit numeric PIN.");
+        return;
+      }
+      localStorage.setItem(PIN_KEY, newPin);
+      document.getElementById("new-pin-input").value = "";
+      alert("PIN changed successfully! Use this new PIN with '=' next time.");
+    }
+
+    function toggleTheme() {
+      var isDark = document.body.classList.toggle("dark-mode");
+      localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
+      document.getElementById("theme-toggle-btn").innerText = isDark ? "☀️ Light" : "🌙 Dark";
+    }
+  </script>
+</body>
+</html>
